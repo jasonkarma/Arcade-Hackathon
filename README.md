@@ -1,10 +1,25 @@
-# Arcade Hackathon
+# Weft
 
-**Memento** turns a written memory into a physical keepsake. Type a memory, and the app writes an
-illustration prompt, generates the artwork through [Arcade AI](https://platform.arcade.ai), turns it
-into a decorative pillow, and returns a checkout link.
+**Weft** turns written sentiment into a physical keepsake. Submit a cherished memory, favorite quote,
+or inside joke, and Weft translates it into an illustration prompt, generates the artwork through
+[Arcade AI](https://platform.arcade.ai), applies it to a decorative pillow, and returns a checkout
+link.
 
-Built with Next.js (App Router) + Tailwind CSS.
+**Live website:** [arcade-hackathon-production.up.railway.app](https://arcade-hackathon-production.up.railway.app/)
+
+Built with Next.js 16 (App Router), React 19, and Tailwind CSS 4. Hosted on
+[Railway](https://railway.com/).
+
+## Experience
+
+- A focused sentiment composer for submissions between 10 and 1,000 characters.
+- A three-phase atelier loading experience with a glowing dial, live phase badge, and the submitted
+  sentiment displayed as an elegant serif quotation.
+- Streaming progress while Weft synthesizes the visual sentiment, creates the physical weave, and
+  mints the Arcade checkout.
+- A finished artifact view with the generated product preview, maker details, generative trace, and
+  checkout link.
+- A transparent demo fallback when Arcade cannot return a live product in time.
 
 ## How it works
 
@@ -18,8 +33,8 @@ memory -> OpenAI-compatible LLM -> image prompt
        -> POST /v1/checkouts/create   (checkout link)
 ```
 
-`POST /api/memento` streams newline-delimited JSON so the UI can show each stage while the pipeline
-runs. Measured end to end: **roughly 50 seconds**.
+`POST /api/memento` streams newline-delimited JSON so the UI can advance through its three atelier
+phases while the pipeline runs. A live request usually completes in under ninety seconds.
 
 ## Getting started
 
@@ -85,19 +100,19 @@ Validation errors return a plain JSON `{ error }` with status 400. Mid-pipeline 
 Measured end to end: **49-55 seconds** (pattern ~24s, product ~12-18s, preview and checkout ~1s each).
 `GET` returns 405.
 
-## Running the demo
+## Deployment
 
-Serve from this laptop and expose it with a tunnel, so the ~50s pipeline is not capped by a platform
-timeout:
+The production website is deployed on Railway:
 
-```bash
-npm run dev
-npx localtunnel --port 3000     # or: ngrok http 3000
-```
+[https://arcade-hackathon-production.up.railway.app/](https://arcade-hackathon-production.up.railway.app/)
 
-Keep `ARCADE_MOCK="fallback"` in `.env.local` for the demo. If Arcade is slow on the day, the pitch
-still lands on a mock pillow instead of an error, and the buy button is labelled as a demo so nobody
-clicks a fake checkout.
+Railway builds and starts the app with the scripts in `package.json`. Configure the environment
+variables listed above in the Railway service, use Node.js 20.9 or newer, and keep the route timeout
+long enough for the configured `PIPELINE_BUDGET_MS`.
+
+Keep `ARCADE_MOCK="fallback"` enabled for public demos. If Arcade is temporarily slow, Weft still
+lands on a clearly labelled mock pillow instead of leaving the visitor on an error screen, and the
+checkout action remains disabled.
 
 To verify the real path before going on stage, set `ARCADE_MOCK="false"`, run one memory through, and
 check that `checkoutUrl` points at `checkout.arcade.ai`.
@@ -126,7 +141,8 @@ Every request carries a fresh `requestId` (a UUID) so retries cannot duplicate a
 ```
 src/
   app/
-    page.tsx                 # the whole UI: textarea, staged progress, result card
+    page.tsx                 # Weft UI: sentiment form, atelier loading phases, result card
+    ambient-background.tsx  # animated atmospheric background
     layout.tsx
     globals.css
     api/memento/route.ts     # streams the pipeline as NDJSON
