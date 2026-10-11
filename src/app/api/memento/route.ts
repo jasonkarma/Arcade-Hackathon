@@ -7,7 +7,7 @@ import { LlmError, generateImagePrompt } from "@/lib/llm";
  * PIPELINE_BUDGET_MS must stay below this or the platform kills the response
  * mid-stream. Ignored when serving locally, where the budget is the only limit.
  */
-export const maxDuration = 120;
+export const maxDuration = 300;
 
 const MIN_MEMORY_LENGTH = 10;
 const MAX_MEMORY_LENGTH = 1000;
@@ -34,6 +34,8 @@ function clientMessage(error: unknown): string {
 }
 
 export async function POST(request: Request) {
+    const requestId = crypto.randomUUID();
+    const startedAt = Date.now();
     let body: unknown;
     try {
         body = await request.json();
@@ -55,7 +57,15 @@ export async function POST(request: Request) {
     }
 
     // One deadline covers the LLM call and the whole Arcade pipeline, under maxDuration.
-    const deadline = Date.now() + arcadeConfig().pipelineBudgetMs;
+    const config = arcadeConfig();
+    const deadline = Date.now() + config.pipelineBudgetMs;
+    console.info("[memento:timing] pipeline started", {
+        requestId,
+        pipelineBudgetMs: config.pipelineBudgetMs,
+        requestTimeoutMs: config.requestTimeoutMs,
+        pollIntervalMs: config.pollIntervalMs,
+        mockMode: config.mock,
+    });
 
     // Stream progress so a 30-60s pipeline shows staged status instead of a dead spinner.
     const encoder = new TextEncoder();
@@ -70,6 +80,11 @@ export async function POST(request: Request) {
                 const imagePrompt = await generateImagePrompt(trimmed, {
                     timeoutMs: deadline - Date.now(),
                 });
+                console.info("[memento:timing] image prompt completed", {
+                    requestId,
+                    elapsedMs: Date.now() - startedAt,
+                    remainingMs: deadline - Date.now(),
+                });
 
                 send({ type: "progress", stage: "pattern", message: "Illustrating your memory…" });
                 const product = await generateProduct(imagePrompt, {
@@ -78,9 +93,21 @@ export async function POST(request: Request) {
                 });
 
                 send({ type: "done", imagePrompt, product });
+                console.info("[memento:timing] pipeline completed", {
+                    requestId,
+                    elapsedMs: Date.now() - startedAt,
+                });
             } catch (error) {
                 const detail = error instanceof Error ? error.message : String(error);
-                console.error("[memento] pipeline failed:", detail);
+                console.error("[memento:timing] pipeline failed", {
+                    requestId,
+                    elapsedMs: Date.now() - startedAt,
+                    remainingMs: deadline - Date.now(),
+                    errorName: error instanceof Error ? error.name : typeof error,
+                    arcadeStep: error instanceof ArcadeError ? error.step : undefined,
+                    arcadeTimeout: error instanceof ArcadeError ? error.timeout : undefined,
+                    detail,
+                });
                 send({ type: "error", message: clientMessage(error) });
             } finally {
                 controller.close();

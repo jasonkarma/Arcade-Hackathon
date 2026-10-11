@@ -311,7 +311,7 @@ export default function Home() {
                                 {PHASES[phase]}
                             </h2>
                             <p className="mt-4 max-w-md text-sm leading-6 text-neutral-500">
-                                Your sentiment is being translated into color, form, and material. This usually takes about ninety seconds.
+                                Your sentiment is being translated into color, form, and material. Complex pieces can take several minutes.
                             </p>
                         </section>
                     )}

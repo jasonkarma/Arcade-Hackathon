@@ -67,7 +67,7 @@ export function arcadeConfig(): ArcadeConfig {
         userAgent: read("ARCADE_USER_AGENT") ?? "memento/1.0",
         requestTimeoutMs: num("ARCADE_REQUEST_TIMEOUT_MS", 30_000),
         pollIntervalMs: num("ARCADE_POLL_INTERVAL_MS", 2_500),
-        pipelineBudgetMs: num("PIPELINE_BUDGET_MS", 90_000),
+        pipelineBudgetMs: num("PIPELINE_BUDGET_MS", 270_000),
         mock: mockMode(),
         categoryId: read("ARCADE_PILLOW_CATEGORY_ID") ?? "0ef267de-f8c2-4a93-89a3-63be809f68e2",
         selections: {

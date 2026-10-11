@@ -91,6 +91,13 @@ async function post<T extends Record<string, unknown>>(
     }
 
     const timeoutMs = Math.min(requestTimeoutMs, remaining);
+    const startedAt = Date.now();
+    console.info("[arcade:timing] request started", {
+        path,
+        step,
+        timeoutMs,
+        pipelineRemainingMs: remaining,
+    });
 
     let response: Response;
     try {
@@ -116,6 +123,13 @@ async function post<T extends Record<string, unknown>>(
     }
 
     const text = await response.text();
+    console.info("[arcade:timing] request completed", {
+        path,
+        step,
+        status: response.status,
+        elapsedMs: Date.now() - startedAt,
+        pipelineRemainingMs: deadline - Date.now(),
+    });
     if (!response.ok) {
         throw new ArcadeError(`Arcade ${path} returned ${response.status}: ${text.slice(0, 300)}`, {
             step,
@@ -145,9 +159,23 @@ async function pollJob(
     const { pollIntervalMs } = arcadeConfig();
     const startedAt = Date.now();
     let announcedProgress = false;
+    let lastStatus: string | undefined;
+    let lastDiagnosticAt = 0;
 
     for (; ;) {
         const job = await post<JobResponse>("/jobs/get", { jobId }, step, deadline);
+        const now = Date.now();
+        if (job.status !== lastStatus || now - lastDiagnosticAt >= 10_000) {
+            console.info("[arcade:timing] job status", {
+                jobId,
+                step,
+                status: job.status ?? "unknown",
+                elapsedMs: now - startedAt,
+                pipelineRemainingMs: deadline - now,
+            });
+            lastStatus = job.status;
+            lastDiagnosticAt = now;
+        }
 
         if (job.status === "succeeded") {
             if (!job.result) {
