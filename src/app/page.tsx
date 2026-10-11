@@ -31,8 +31,8 @@ type View = "idle" | "loading" | "success";
 
 const PHASES = [
     "Reading the emotional signal",
-    "Synthesizing your visual memory",
-    "Mapping the artwork to matter",
+    "Synthesizing visual sentiment",
+    "Interlocking weave & minting checkout",
 ] as const;
 
 const FADE_MS = 700;
@@ -44,12 +44,12 @@ function phaseForStage(stage: Stage): number {
 
 function Mark() {
     return (
-        <div className="flex items-center gap-3" aria-label="Momento">
+        <div className="flex items-center gap-3" aria-label="Weft">
             <span className="relative grid size-9 place-items-center rounded-xl border border-white/10 bg-white/[0.06] shadow-[inset_0_1px_0_rgba(255,255,255,0.12)]">
                 <span className="absolute size-3.5 animate-ping rounded-full bg-amber-300/15" />
                 <span className="size-2 rounded-full bg-gradient-to-br from-amber-200 to-orange-400 shadow-[0_0_16px_rgba(245,208,169,0.65)]" />
             </span>
-            <span className="text-sm font-medium tracking-[0.18em] text-white">MOMENTO</span>
+            <span className="text-sm font-medium tracking-widest text-white">Weft</span>
         </div>
     );
 }
@@ -294,23 +294,24 @@ export default function Home() {
 
                     {view === "loading" && (
                         <section aria-live="polite" className="animate-in fade-in zoom-in-95 mx-auto flex w-full max-w-2xl flex-col items-center text-center duration-700">
-                            <div className="relative mb-12 grid size-36 place-items-center">
+                            <div className="relative grid size-36 place-items-center">
                                 <div className="absolute inset-0 animate-spin rounded-full bg-[conic-gradient(from_0deg,transparent_0_20%,rgba(200,168,118,.8)_45%,transparent_70%)] p-px [animation-duration:3s]">
                                     <div className="size-full rounded-full bg-[#09080b]/90" />
                                 </div>
                                 <div className="absolute inset-4 animate-pulse rounded-full border border-amber-300/20 shadow-[0_0_40px_rgba(200,168,118,0.18),inset_0_0_30px_rgba(184,93,56,0.08)]" />
-                                <span className="text-sm font-medium tabular-nums tracking-[0.18em] text-white">
-                                    0{phase + 1}<span className="text-neutral-600"> / 0{PHASES.length}</span>
-                                </span>
+                                <span className="size-2 rounded-full bg-amber-200 shadow-[0_0_24px_rgba(245,208,169,0.8)]" />
                             </div>
-                            <p className="text-[10px] font-medium uppercase tracking-[0.25em] text-amber-200">Atelier loom active</p>
-                            <h2 key={phase} className="animate-in fade-in zoom-in-95 mt-5 text-3xl font-medium tracking-tight text-white duration-700 sm:text-4xl">
-                                {phase === PHASES.length - 1
-                                    ? "03 / 03 — Interlocking physical weave & minting checkout via Arcade API..."
-                                    : PHASES[phase]}
+                            <p className="mt-8 rounded-full border border-amber-200/15 bg-amber-200/[0.06] px-3 py-1.5 text-[10px] font-medium uppercase tracking-[0.2em] text-amber-200">
+                                0{phase + 1} / 0{PHASES.length} — Atelier loom active
+                            </p>
+                            <blockquote className="my-8 max-w-2xl text-center font-serif text-xl italic leading-relaxed text-stone-300/90 drop-shadow-md shadow-black/50">
+                                &ldquo;{memory}&rdquo;
+                            </blockquote>
+                            <h2 key={phase} className="animate-in fade-in zoom-in-95 text-3xl font-medium text-white duration-700">
+                                {PHASES[phase]}
                             </h2>
                             <p className="mt-4 max-w-md text-sm leading-6 text-neutral-500">
-                                Your memory is being translated into color, form, and material. This usually takes about ninety seconds.
+                                Your sentiment is being translated into color, form, and material. This usually takes about ninety seconds.
                             </p>
                         </section>
                     )}
