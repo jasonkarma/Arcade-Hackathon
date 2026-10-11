@@ -1,19 +1,225 @@
 @import "tailwindcss";
 
 :root {
-  --background: #f7f4ee;
-  --foreground: #2c2620;
+    --background: #050505;
+    --foreground: #f5f5f5;
 }
 
 @theme inline {
-  --color-background: var(--background);
-  --color-foreground: var(--foreground);
-  --font-sans: var(--font-geist-sans);
-  --font-mono: var(--font-geist-mono);
+    --color-background: var(--background);
+    --color-foreground: var(--foreground);
+    --font-sans: var(--font-geist-sans);
+    --font-mono: var(--font-geist-mono);
+
+    --animate-in: enter-space 0.7s cubic-bezier(0.22, 1, 0.36, 1) both;
+    --animate-fade-in: enter-space 0.7s cubic-bezier(0.22, 1, 0.36, 1) both;
+
+    @keyframes enter-space {
+        from {
+            opacity: 0;
+            transform: scale(0.95) translateY(10px);
+            filter: blur(5px);
+        }
+
+        to {
+            opacity: 1;
+            transform: scale(1) translateY(0);
+            filter: blur(0);
+        }
+    }
+}
+
+* {
+    box-sizing: border-box;
+}
+
+html {
+    background: var(--background);
+    color-scheme: dark;
 }
 
 body {
-  background: var(--background);
-  color: var(--foreground);
-  font-family: var(--font-geist-sans), Arial, Helvetica, sans-serif;
+    margin: 0;
+    background: var(--background);
+    color: var(--foreground);
+    font-family: var(--font-geist-sans), Inter, ui-sans-serif, -apple-system, BlinkMacSystemFont,
+        "Segoe UI", sans-serif;
+}
+
+button,
+a,
+textarea,
+summary {
+    -webkit-tap-highlight-color: transparent;
+}
+
+button,
+a,
+summary {
+    outline-offset: 4px;
+}
+
+button:focus-visible,
+a:focus-visible,
+summary:focus-visible {
+    outline: 1px solid rgba(216, 180, 254, 0.85);
+}
+
+.aurora {
+    position: fixed;
+    inset: 0;
+    z-index: 0;
+    overflow: hidden;
+    background:
+        radial-gradient(circle at 50% -20%, rgba(89, 42, 133, 0.18), transparent 48%),
+        #050505;
+    pointer-events: none;
+}
+
+.aurora::after {
+    position: absolute;
+    inset: 0;
+    content: "";
+    background: radial-gradient(circle at center, transparent 0%, rgba(0, 0, 0, 0.18) 55%, #030303 100%);
+}
+
+.aurora-blob {
+    position: absolute;
+    border-radius: 9999px;
+    filter: blur(110px);
+    opacity: 0.55;
+    will-change: transform, opacity;
+}
+
+.aurora-blob-violet {
+    top: -25%;
+    left: -8%;
+    width: 58vw;
+    height: 58vw;
+    min-width: 38rem;
+    min-height: 38rem;
+    background: radial-gradient(circle, rgba(92, 36, 164, 0.56) 0%, rgba(45, 12, 74, 0.18) 52%, transparent 72%);
+    animation: drift-violet 18s ease-in-out infinite alternate;
+}
+
+.aurora-blob-copper {
+    right: -18%;
+    bottom: -36%;
+    width: 64vw;
+    height: 64vw;
+    min-width: 42rem;
+    min-height: 42rem;
+    background: radial-gradient(circle, rgba(184, 72, 34, 0.5) 0%, rgba(107, 36, 18, 0.18) 50%, transparent 72%);
+    animation: drift-copper 22s ease-in-out infinite alternate;
+}
+
+.aurora-blob-orchid {
+    top: 36%;
+    left: 42%;
+    width: 38vw;
+    height: 38vw;
+    min-width: 26rem;
+    min-height: 26rem;
+    background: radial-gradient(circle, rgba(130, 54, 187, 0.24) 0%, rgba(111, 44, 137, 0.08) 52%, transparent 74%);
+    animation: breathe-orchid 14s ease-in-out infinite;
+}
+
+.fiber-canvas {
+    position: fixed;
+    inset: 0;
+    z-index: 1;
+    width: 100%;
+    height: 100%;
+    opacity: 0.56;
+    pointer-events: none;
+    -webkit-mask-image: linear-gradient(to bottom, transparent 6%, black 26%, black 82%, transparent 100%);
+    mask-image: linear-gradient(to bottom, transparent 6%, black 26%, black 82%, transparent 100%);
+}
+
+.noise-grid {
+    position: fixed;
+    inset: 0;
+    z-index: 2;
+    pointer-events: none;
+    opacity: 0.22;
+    background-image:
+        linear-gradient(rgba(255, 255, 255, 0.024) 1px, transparent 1px),
+        linear-gradient(90deg, rgba(255, 255, 255, 0.024) 1px, transparent 1px);
+    background-size: 72px 72px;
+    -webkit-mask-image: radial-gradient(circle at center, black, transparent 80%);
+    mask-image: radial-gradient(circle at center, black, transparent 80%);
+}
+
+@keyframes drift-violet {
+    0% {
+        transform: translate3d(-5%, -4%, 0) scale(0.9);
+        opacity: 0.42;
+    }
+
+    50% {
+        transform: translate3d(18%, 10%, 0) scale(1.12);
+        opacity: 0.63;
+    }
+
+    100% {
+        transform: translate3d(33%, -2%, 0) scale(0.98);
+        opacity: 0.5;
+    }
+}
+
+@keyframes drift-copper {
+    0% {
+        transform: translate3d(8%, 8%, 0) scale(0.92);
+        opacity: 0.38;
+    }
+
+    48% {
+        transform: translate3d(-18%, -15%, 0) scale(1.13);
+        opacity: 0.58;
+    }
+
+    100% {
+        transform: translate3d(-30%, -3%, 0) scale(1.02);
+        opacity: 0.46;
+    }
+}
+
+@keyframes breathe-orchid {
+
+    0%,
+    100% {
+        transform: translate3d(-12%, 6%, 0) scale(0.78);
+        opacity: 0.22;
+    }
+
+    50% {
+        transform: translate3d(15%, -12%, 0) scale(1.28);
+        opacity: 0.5;
+    }
+}
+
+@media (max-width: 640px) {
+    .aurora-blob {
+        filter: blur(85px);
+    }
+
+    .noise-grid {
+        background-size: 48px 48px;
+    }
+}
+
+@media (prefers-reduced-motion: reduce) {
+
+    *,
+    *::before,
+    *::after {
+        scroll-behavior: auto !important;
+        animation-duration: 0.01ms !important;
+        animation-iteration-count: 1 !important;
+        transition-duration: 0.01ms !important;
+    }
+
+    .aurora-blob {
+        animation: none;
+    }
 }

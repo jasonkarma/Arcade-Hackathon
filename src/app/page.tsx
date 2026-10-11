@@ -1,255 +1,434 @@
 "use client";
 
-import { useRef, useState } from "react";
+import { useEffect, useRef, useState, type FormEvent } from "react";
 
 type Stage = "pattern" | "product" | "preview" | "checkout";
 
 type Product = {
-  mock: boolean;
-  patternId?: string;
-  productId?: string;
-  title?: string;
-  selectionLabel?: string;
-  previewImageUrl?: string;
-  images?: string[];
-  checkoutId?: string;
-  checkoutUrl: string;
-  elapsedMs: number;
-  fallbackReason?: string;
+    mock: boolean;
+    patternId?: string;
+    productId?: string;
+    title?: string;
+    selectionLabel?: string;
+    previewImageUrl?: string;
+    images?: string[];
+    checkoutId?: string;
+    checkoutUrl: string;
+    elapsedMs: number;
+    fallbackReason?: string;
 };
 
 type Result = { imagePrompt: string; product: Product };
 
 type StreamLine =
-  | { type: "progress"; stage: Stage; message: string }
-  | { type: "done"; imagePrompt: string; product: Product }
-  | { type: "error"; message: string };
+    | { type: "progress"; stage: Stage; message: string }
+    | { type: "done"; imagePrompt: string; product: Product }
+    | { type: "error"; message: string };
 
-const STAGES: { key: Stage; label: string }[] = [
-  { key: "pattern", label: "Illustration" },
-  { key: "product", label: "Pillow" },
-  { key: "preview", label: "Preview" },
-  { key: "checkout", label: "Checkout" },
-];
+type View = "idle" | "loading" | "success";
+
+const PHASES = [
+    "Reading the emotional signal",
+    "Synthesizing your visual memory",
+    "Mapping the artwork to matter",
+] as const;
+
+const FADE_MS = 700;
+const MIN_LENGTH = 10;
+
+function phaseForStage(stage: Stage): number {
+    return stage === "pattern" ? 1 : 2;
+}
+
+/** A procedural fiber-optic field that stays behind the interface. */
+function FiberField() {
+    const canvasRef = useRef<HTMLCanvasElement>(null);
+
+    useEffect(() => {
+        const canvas = canvasRef.current;
+        if (!canvas) return;
+
+        const context = canvas.getContext("2d");
+        if (!context) return;
+
+        const reduceMotion = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+        let width = 0;
+        let height = 0;
+        let frame = 0;
+        let animationFrame = 0;
+
+        const resize = () => {
+            const pixelRatio = Math.min(window.devicePixelRatio || 1, 2);
+            width = window.innerWidth;
+            height = window.innerHeight;
+            canvas.width = width * pixelRatio;
+            canvas.height = height * pixelRatio;
+            canvas.style.width = `${width}px`;
+            canvas.style.height = `${height}px`;
+            context.setTransform(pixelRatio, 0, 0, pixelRatio, 0, 0);
+        };
+
+        const draw = () => {
+            context.clearRect(0, 0, width, height);
+            context.globalCompositeOperation = "lighter";
+
+            const time = reduceMotion ? 40 : frame * 0.012;
+            const fiberCount = width < 640 ? 10 : 18;
+
+            for (let fiber = 0; fiber < fiberCount; fiber += 1) {
+                const ratio = fiber / Math.max(fiberCount - 1, 1);
+                const copper = fiber % 3 === 0;
+                const alpha = 0.1 + (fiber % 4) * 0.025;
+                const color = copper
+                    ? `rgba(255, 128, 68, ${alpha})`
+                    : `rgba(171, 105, 255, ${alpha})`;
+
+                context.beginPath();
+                context.lineWidth = fiber % 5 === 0 ? 1.15 : 0.55;
+                context.strokeStyle = color;
+                context.shadowColor = copper ? "rgba(255, 105, 45, .7)" : "rgba(149, 76, 255, .75)";
+                context.shadowBlur = fiber % 4 === 0 ? 18 : 8;
+
+                for (let x = -40; x <= width + 40; x += 12) {
+                    const wave = Math.sin(x * 0.0045 + time + fiber * 0.52) * (38 + fiber * 1.8);
+                    const signal = Math.sin(x * 0.011 - time * 1.35 + fiber) * 18;
+                    const y = height * (0.24 + ratio * 0.55) + wave + signal;
+                    if (x === -40) context.moveTo(x, y);
+                    else context.lineTo(x, y);
+                }
+
+                context.stroke();
+            }
+
+            context.shadowBlur = 0;
+            context.globalCompositeOperation = "source-over";
+            frame += 1;
+            if (!reduceMotion) animationFrame = requestAnimationFrame(draw);
+        };
+
+        resize();
+        draw();
+        window.addEventListener("resize", resize);
+
+        return () => {
+            window.removeEventListener("resize", resize);
+            cancelAnimationFrame(animationFrame);
+        };
+    }, []);
+
+    return <canvas ref={canvasRef} className="fiber-canvas" aria-hidden="true" />;
+}
+
+function Mark() {
+    return (
+        <div className="flex items-center gap-3" aria-label="Memento">
+            <span className="relative grid size-9 place-items-center rounded-xl border border-white/10 bg-white/[0.06] shadow-[inset_0_1px_0_rgba(255,255,255,0.12)]">
+                <span className="absolute size-3.5 animate-ping rounded-full bg-purple-400/20" />
+                <span className="size-2 rounded-full bg-gradient-to-br from-purple-300 to-orange-400 shadow-[0_0_16px_rgba(192,119,255,0.9)]" />
+            </span>
+            <span className="text-sm font-medium tracking-[0.18em] text-white">MEMENTO</span>
+        </div>
+    );
+}
 
 export default function Home() {
-  const [memory, setMemory] = useState("");
-  const [status, setStatus] = useState("");
-  const [stage, setStage] = useState<Stage | null>(null);
-  const [busy, setBusy] = useState(false);
-  const [error, setError] = useState<string | null>(null);
-  const [result, setResult] = useState<Result | null>(null);
-  const abortRef = useRef<AbortController | null>(null);
+    const [memory, setMemory] = useState("");
+    const [phase, setPhase] = useState(0);
+    const [busy, setBusy] = useState(false);
+    const [error, setError] = useState<string | null>(null);
+    const [result, setResult] = useState<Result | null>(null);
+    const [view, setView] = useState<View>("idle");
+    const [visible, setVisible] = useState(true);
 
-  const tooShort = memory.trim().length > 0 && memory.trim().length < 10;
+    const abortRef = useRef<AbortController | null>(null);
+    const fadeTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
-  async function submit(event: React.FormEvent) {
-    event.preventDefault();
-    if (busy) return;
+    useEffect(() => {
+        console.info("[memento] React hydration active");
+    }, []);
 
-    const trimmed = memory.trim();
-    if (trimmed.length < 10) {
-      setError("Please describe the memory in at least 10 characters.");
-      return;
+    useEffect(
+        () => () => {
+            if (fadeTimerRef.current) clearTimeout(fadeTimerRef.current);
+            abortRef.current?.abort();
+        },
+        [],
+    );
+
+    function goTo(next: View) {
+        if (fadeTimerRef.current) clearTimeout(fadeTimerRef.current);
+        setVisible(false);
+        fadeTimerRef.current = setTimeout(() => {
+            setView(next);
+            setVisible(true);
+            fadeTimerRef.current = null;
+        }, FADE_MS);
     }
 
-    abortRef.current?.abort();
-    const controller = new AbortController();
-    abortRef.current = controller;
+    async function submit(event: FormEvent) {
+        event.preventDefault();
+        console.info("[memento] React submit handler reached");
+        if (busy) return;
 
-    setBusy(true);
-    setError(null);
-    setResult(null);
-    setStage(null);
-    setStatus("Reading your memory…");
-
-    try {
-      const response = await fetch("/api/memento", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ memory: trimmed }),
-        signal: controller.signal,
-      });
-
-      // Validation and other pre-stream failures come back as plain JSON.
-      if (!response.ok) {
-        const payload = (await response.json().catch(() => null)) as { error?: string } | null;
-        throw new Error(payload?.error ?? `Request failed with ${response.status}.`);
-      }
-      if (!response.body) throw new Error("The server returned an empty response.");
-
-      const reader = response.body.getReader();
-      const decoder = new TextDecoder();
-      let buffer = "";
-
-      for (; ;) {
-        const { value, done } = await reader.read();
-        if (done) break;
-        buffer += decoder.decode(value, { stream: true });
-
-        const lines = buffer.split("\n");
-        buffer = lines.pop() ?? "";
-
-        for (const line of lines) {
-          if (!line.trim()) continue;
-          const event = JSON.parse(line) as StreamLine;
-
-          if (event.type === "progress") {
-            setStage(event.stage);
-            setStatus(event.message);
-          } else if (event.type === "done") {
-            setResult({ imagePrompt: event.imagePrompt, product: event.product });
-            setStage(null);
-            setStatus("");
-          } else {
-            throw new Error(event.message);
-          }
+        // Read from the form so browser autofill and automation-inserted text are
+        // captured even when they do not dispatch React's change event.
+        const formData = new FormData(event.currentTarget as HTMLFormElement);
+        const trimmed = String(formData.get("memory") ?? memory).trim();
+        if (trimmed.length < MIN_LENGTH) {
+            setError(`Please describe the memory in at least ${MIN_LENGTH} characters.`);
+            return;
         }
-      }
-    } catch (caught) {
-      if ((caught as Error).name === "AbortError") return;
-      setError(caught instanceof Error ? caught.message : "Something went wrong.");
-      setStage(null);
-      setStatus("");
-    } finally {
-      setBusy(false);
+
+        setMemory(trimmed);
+
+        abortRef.current?.abort();
+        const controller = new AbortController();
+        abortRef.current = controller;
+        setBusy(true);
+        setError(null);
+        setPhase(0);
+        goTo("loading");
+
+        try {
+            const response = await fetch("/api/memento", {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({ memory: trimmed }),
+                signal: controller.signal,
+            });
+
+            if (!response.ok) {
+                const payload = (await response.json().catch(() => null)) as { error?: string } | null;
+                throw new Error(payload?.error ?? `Request failed with ${response.status}.`);
+            }
+            if (!response.body) throw new Error("The server returned an empty response.");
+
+            const reader = response.body.getReader();
+            const decoder = new TextDecoder();
+            let buffer = "";
+
+            for (; ;) {
+                const { value, done } = await reader.read();
+                if (done) break;
+                buffer += decoder.decode(value, { stream: true });
+                const lines = buffer.split("\n");
+                buffer = lines.pop() ?? "";
+
+                for (const line of lines) {
+                    if (!line.trim()) continue;
+                    const streamEvent = JSON.parse(line) as StreamLine;
+                    if (streamEvent.type === "progress") {
+                        setPhase((current) => Math.max(current, phaseForStage(streamEvent.stage)));
+                    } else if (streamEvent.type === "done") {
+                        setResult({ imagePrompt: streamEvent.imagePrompt, product: streamEvent.product });
+                        goTo("success");
+                    } else {
+                        throw new Error(streamEvent.message);
+                    }
+                }
+            }
+        } catch (caught) {
+            if ((caught as Error).name === "AbortError") return;
+            setError(caught instanceof Error ? caught.message : "Something went wrong.");
+            goTo("idle");
+        } finally {
+            setBusy(false);
+        }
     }
-  }
 
-  const activeIndex = stage ? STAGES.findIndex((item) => item.key === stage) : -1;
+    function startOver() {
+        setError(null);
+        setPhase(0);
+        goTo("idle");
+        setTimeout(() => setResult(null), FADE_MS);
+    }
 
-  return (
-    <main className="mx-auto w-full max-w-3xl px-6 py-14 sm:py-20">
-      <header className="mb-10">
-        <p className="text-xs font-medium uppercase tracking-[0.2em] text-stone-500">
-          Memento
-        </p>
-        <h1 className="mt-3 text-4xl font-semibold leading-tight tracking-tight text-stone-900 sm:text-5xl">
-          Turn a memory into something you can hold.
-        </h1>
-        <p className="mt-4 max-w-xl text-stone-600">
-          Describe a moment. We illustrate it, print it onto a handcrafted pillow, and hand you a
-          checkout link.
-        </p>
-      </header>
-
-      <form onSubmit={submit} className="rounded-2xl border border-stone-200 bg-white p-5 shadow-sm">
-        <label htmlFor="memory" className="block text-sm font-medium text-stone-700">
-          What do you remember?
-        </label>
-        <textarea
-          id="memory"
-          value={memory}
-          onChange={(event) => setMemory(event.target.value)}
-          rows={5}
-          maxLength={1000}
-          placeholder="Enter a memory, a favorite quote, or a special event..."
-          disabled={busy}
-          className="mt-3 w-full resize-y rounded-xl border border-stone-200 bg-stone-50 px-4 py-3 text-stone-900 transition focus:bg-white focus:ring-2 focus:ring-black focus:outline-none disabled:opacity-60"
-        />
-
-        <div className="mt-3 flex items-center justify-between gap-4">
-          <span className="text-xs text-stone-400">
-            {memory.length}/1000
-            {tooShort && " · needs at least 10"}
-          </span>
-          <button
-            type="submit"
-            disabled={busy || memory.trim().length < 5}
-            className="rounded-xl bg-black px-5 py-2.5 text-sm font-medium text-white transition hover:bg-gray-800 disabled:cursor-not-allowed disabled:bg-gray-300 disabled:text-gray-500"
-          >
-            {busy ? "Working…" : "Create my keepsake"}
-          </button>
-        </div>
-      </form>
-
-      {busy && (
-        <section className="mt-6 rounded-2xl border border-stone-200 bg-white p-5 shadow-sm">
-          <p className="text-sm font-medium text-stone-800">{status || "Working…"}</p>
-          <ol className="mt-4 grid grid-cols-2 gap-2 sm:grid-cols-4">
-            {STAGES.map((item, index) => {
-              const done = activeIndex > index;
-              const active = activeIndex === index;
-              return (
-                <li
-                  key={item.key}
-                  className={`rounded-lg border px-3 py-2 text-xs transition ${active
-                    ? "border-stone-900 bg-stone-900 text-white"
-                    : done
-                      ? "border-stone-300 bg-stone-100 text-stone-600"
-                      : "border-stone-200 text-stone-400"
-                    }`}
-                >
-                  {item.label}
-                </li>
-              );
-            })}
-          </ol>
-        </section>
-      )}
-
-      {error && (
-        <p
-          role="alert"
-          className="mt-6 rounded-2xl border border-red-200 bg-red-50 px-5 py-4 text-sm text-red-800"
-        >
-          {error}
-        </p>
-      )}
-
-      {result && (
-        <section className="mt-6 overflow-hidden rounded-2xl border border-stone-200 bg-white shadow-sm">
-          {result.product.previewImageUrl && (
-            // Remote host varies by Arcade environment, so skip next/image optimisation.
-            // eslint-disable-next-line @next/next/no-img-element
-            <img
-              src={result.product.previewImageUrl}
-              alt="Illustration generated from your memory, printed on a pillow"
-              className="aspect-square w-full bg-stone-100 object-cover"
-            />
-          )}
-
-          <div className="space-y-4 p-5">
-            <div>
-              <h2 className="text-lg font-semibold text-stone-900">
-                {result.product.title ?? "Your keepsake"}
-              </h2>
-              <p className="text-sm text-stone-500">
-                {result.product.selectionLabel ?? "Handcrafted by an independent maker"}
-                {result.product.elapsedMs > 0 && ` · made in ${Math.round(result.product.elapsedMs / 1000)}s`}
-              </p>
+    return (
+        <main className="relative min-h-svh overflow-hidden bg-neutral-950 text-white selection:bg-purple-400/30">
+            <div className="aurora" aria-hidden="true">
+                <div className="aurora-blob aurora-blob-violet" />
+                <div className="aurora-blob aurora-blob-copper" />
+                <div className="aurora-blob aurora-blob-orchid" />
             </div>
+            <FiberField />
+            <div className="noise-grid" aria-hidden="true" />
 
-            {result.product.mock && (
-              <p className="rounded-xl border border-amber-200 bg-amber-50 px-4 py-3 text-xs text-amber-800">
-                <strong className="font-semibold">Demo preview.</strong> The live product service did
-                not return a result{result.product.fallbackReason ? ` (${result.product.fallbackReason.slice(0, 120)})` : ""}, so
-                this is placeholder artwork and the checkout link is not a real order.
-              </p>
-            )}
+            <div className="relative z-10 mx-auto flex min-h-svh w-full max-w-7xl flex-col px-5 sm:px-8 lg:px-12">
+                <nav className="flex items-center justify-between py-6 sm:py-8">
+                    <Mark />
+                    <div className="hidden items-center gap-2 text-[11px] font-medium uppercase tracking-[0.18em] text-neutral-500 sm:flex">
+                        <span className="size-1.5 rounded-full bg-emerald-400 shadow-[0_0_10px_rgba(52,211,153,0.9)]" />
+                        Creative engine online
+                    </div>
+                </nav>
 
-            <details className="text-sm">
-              <summary className="cursor-pointer text-stone-500">Illustration prompt</summary>
-              <p className="mt-2 whitespace-pre-wrap text-stone-700">{result.imagePrompt}</p>
-            </details>
+                <div
+                    className={`flex flex-1 items-center py-10 transition-all duration-700 ease-out ${visible ? "scale-100 opacity-100 blur-0" : "scale-95 opacity-0 blur-sm"
+                        }`}
+                >
+                    {view === "idle" && (
+                        <section className="animate-in fade-in zoom-in-95 grid w-full gap-12 duration-700 lg:grid-cols-[1.05fr_0.95fr] lg:items-center lg:gap-20">
+                            <header>
+                                <div className="mb-7 inline-flex items-center gap-2 rounded-full border border-white/10 bg-white/[0.04] px-3 py-1.5 text-[10px] font-medium uppercase tracking-[0.2em] text-neutral-400 backdrop-blur-xl">
+                                    <span className="text-purple-300">✦</span> AI-powered memory synthesis
+                                </div>
+                                <h1 className="max-w-3xl font-sans text-5xl font-medium leading-[0.96] tracking-[-0.055em] text-white sm:text-6xl lg:text-7xl xl:text-[5.4rem]">
+                                    Turn a memory into{" "}
+                                    <span className="bg-gradient-to-r from-purple-400 via-fuchsia-300 to-orange-400 bg-clip-text text-transparent">
+                                        something real.
+                                    </span>
+                                </h1>
+                                <p className="mt-7 max-w-xl text-base leading-7 text-neutral-400 sm:text-lg">
+                                    Describe a moment worth keeping. Our creative intelligence transforms it into
+                                    one-of-one artwork, then maps it onto a physical object you can hold.
+                                </p>
+                                <div className="mt-9 flex items-center gap-6 text-xs text-neutral-500">
+                                    <span className="flex items-center gap-2">
+                                        <span className="h-px w-6 bg-gradient-to-r from-purple-400 to-transparent" />
+                                        Unique to you
+                                    </span>
+                                    <span className="flex items-center gap-2">
+                                        <span className="h-px w-6 bg-gradient-to-r from-orange-400 to-transparent" />
+                                        Made tangible
+                                    </span>
+                                </div>
+                            </header>
 
-            {result.product.mock ? (
-              <span className="inline-block rounded-xl bg-stone-200 px-5 py-2.5 text-sm font-medium text-stone-500">
-                Buy (demo — not a real order)
-              </span>
-            ) : (
-              <a
-                href={result.product.checkoutUrl}
-                target="_blank"
-                rel="noopener noreferrer"
-                className="inline-block rounded-xl bg-stone-900 px-5 py-2.5 text-sm font-medium text-white transition hover:bg-stone-700"
-              >
-                Buy this pillow →
-              </a>
-            )}
-          </div>
-        </section>
-      )}
-    </main>
-  );
+                            <div>
+                                <form
+                                    onSubmit={submit}
+                                    className="group rounded-2xl border border-white/10 bg-white/[0.05] p-2 shadow-[0_32px_100px_rgba(0,0,0,0.5)] backdrop-blur-2xl transition-all duration-500 focus-within:border-white/30 focus-within:shadow-[0_0_30px_rgba(184,92,56,0.2),0_32px_100px_rgba(0,0,0,0.45)]"
+                                >
+                                    <div className="rounded-xl border border-white/[0.06] bg-black/20 p-5 sm:p-6">
+                                        <label htmlFor="memory" className="flex items-center justify-between text-[10px] font-medium uppercase tracking-[0.2em] text-neutral-500">
+                                            <span>Memory input</span>
+                                            <span className="flex items-center gap-1.5 text-purple-300/70">
+                                                <span className="size-1 rounded-full bg-purple-400 shadow-[0_0_8px_rgba(192,132,252,0.9)]" />
+                                                Listening
+                                            </span>
+                                        </label>
+                                        <textarea
+                                            id="memory"
+                                            name="memory"
+                                            value={memory}
+                                            onChange={(event) => {
+                                                console.info("[memento] React input event", { length: event.target.value.length });
+                                                setMemory(event.target.value);
+                                            }}
+                                            rows={7}
+                                            maxLength={1000}
+                                            placeholder="A late summer evening, the smell of rain, my grandmother laughing in the kitchen…"
+                                            disabled={busy}
+                                            className="mt-5 w-full resize-none border-0 bg-transparent p-0 text-base leading-7 text-neutral-200 outline-none placeholder:text-neutral-600 focus:ring-0 disabled:opacity-50 sm:text-lg"
+                                        />
+                                        <div className="mt-5 h-px bg-gradient-to-r from-transparent via-white/10 to-transparent" />
+                                        <div className="mt-5 flex items-center justify-end gap-4">
+                                            <button
+                                                type="submit"
+                                                disabled={busy}
+                                                className="relative overflow-hidden rounded-xl border border-white/10 bg-white px-5 py-3 text-sm font-medium text-neutral-950 shadow-[0_0_24px_rgba(255,255,255,0.12)] transition-all duration-300 before:absolute before:inset-0 before:bg-gradient-to-r before:from-purple-300/0 before:via-purple-300/30 before:to-orange-300/20 before:opacity-0 before:transition-opacity hover:scale-[1.02] hover:shadow-[0_0_32px_rgba(192,132,252,0.28)] hover:before:opacity-100 disabled:cursor-not-allowed disabled:bg-white/10 disabled:text-neutral-600 disabled:shadow-none disabled:hover:scale-100"
+                                            >
+                                                <span className="relative flex items-center gap-2">
+                                                    Synthesize <span aria-hidden="true">↗</span>
+                                                </span>
+                                            </button>
+                                        </div>
+                                    </div>
+                                </form>
+
+                                {error && (
+                                    <p role="alert" className="animate-in fade-in zoom-in-95 mt-4 rounded-xl border border-red-400/20 bg-red-400/10 px-4 py-3 text-sm text-red-200 backdrop-blur-xl duration-700">
+                                        {error}
+                                    </p>
+                                )}
+                            </div>
+                        </section>
+                    )}
+
+                    {view === "loading" && (
+                        <section aria-live="polite" className="animate-in fade-in zoom-in-95 mx-auto flex w-full max-w-2xl flex-col items-center text-center duration-700">
+                            <div className="relative mb-12 grid size-36 place-items-center">
+                                <div className="absolute inset-0 animate-spin rounded-full bg-[conic-gradient(from_0deg,transparent_0_20%,rgba(192,132,252,.8)_45%,transparent_70%)] p-px [animation-duration:3s]">
+                                    <div className="size-full rounded-full bg-neutral-950/90" />
+                                </div>
+                                <div className="absolute inset-4 animate-pulse rounded-full border border-orange-400/20 shadow-[0_0_40px_rgba(192,132,252,0.18),inset_0_0_30px_rgba(251,146,60,0.08)]" />
+                                <span className="text-sm font-medium tabular-nums tracking-[0.18em] text-white">
+                                    0{phase + 1}<span className="text-neutral-600"> / 0{PHASES.length}</span>
+                                </span>
+                            </div>
+                            <p className="text-[10px] font-medium uppercase tracking-[0.25em] text-purple-300">Neural loom active</p>
+                            <h2 key={phase} className="animate-in fade-in zoom-in-95 mt-5 text-3xl font-medium tracking-tight text-white duration-700 sm:text-4xl">
+                                {PHASES[phase]}
+                            </h2>
+                            <p className="mt-4 max-w-md text-sm leading-6 text-neutral-500">
+                                Your memory is being translated into color, form, and material. This usually takes about ninety seconds.
+                            </p>
+                        </section>
+                    )}
+
+                    {view === "success" && result && (
+                        <section className="animate-in fade-in zoom-in-95 mx-auto grid w-full max-w-5xl overflow-hidden rounded-3xl border border-white/10 bg-white/[0.05] shadow-[0_40px_140px_rgba(0,0,0,0.65)] backdrop-blur-2xl duration-700 md:grid-cols-[1.05fr_0.95fr]">
+                            <div className="relative min-h-80 overflow-hidden bg-black/40 md:min-h-[34rem]">
+                                {result.product.previewImageUrl ? (
+                                    // eslint-disable-next-line @next/next/no-img-element
+                                    <img src={result.product.previewImageUrl} alt="AI artwork generated from your memory, presented on a pillow" className="h-full w-full object-cover transition-transform duration-700 hover:scale-[1.025]" />
+                                ) : (
+                                    <div className="grid h-full place-items-center text-sm text-neutral-600">Preview unavailable</div>
+                                )}
+                                <div className="pointer-events-none absolute inset-0 bg-gradient-to-t from-black/35 via-transparent to-purple-500/10" />
+                                <div className="absolute left-5 top-5 rounded-full border border-white/10 bg-black/40 px-3 py-1.5 text-[10px] font-medium uppercase tracking-[0.18em] text-white/70 backdrop-blur-xl">
+                                    Synthesis complete
+                                </div>
+                            </div>
+
+                            <div className="flex flex-col p-7 sm:p-9">
+                                <div className="mb-8 flex items-center gap-2 text-[10px] font-medium uppercase tracking-[0.2em] text-emerald-300/80">
+                                    <span className="size-1.5 rounded-full bg-emerald-400 shadow-[0_0_10px_rgba(52,211,153,0.8)]" />
+                                    Artifact ready
+                                </div>
+                                <h2 className="text-3xl font-medium tracking-tight text-white sm:text-4xl">
+                                    {result.product.title ?? "Your memory, made tangible"}
+                                </h2>
+                                <p className="mt-3 text-sm leading-6 text-neutral-400">
+                                    {result.product.selectionLabel ?? "Crafted by an independent maker"}
+                                    {result.product.elapsedMs > 0 && ` · synthesized in ${Math.round(result.product.elapsedMs / 1000)}s`}
+                                </p>
+
+                                {result.product.mock && (
+                                    <p className="mt-6 rounded-xl border border-orange-400/20 bg-orange-400/[0.08] p-4 text-xs leading-5 text-orange-100/70">
+                                        <strong className="font-medium text-orange-200">Demo preview.</strong> The live product service did not return a result{result.product.fallbackReason ? ` (${result.product.fallbackReason.slice(0, 120)})` : ""}, so this checkout is disabled.
+                                    </p>
+                                )}
+
+                                <details className="group mt-7 border-y border-white/[0.07] py-4 text-sm">
+                                    <summary className="flex cursor-pointer list-none items-center justify-between text-[10px] font-medium uppercase tracking-[0.2em] text-neutral-500 transition-colors hover:text-neutral-300">
+                                        Generative trace <span className="text-base transition-transform group-open:rotate-45">+</span>
+                                    </summary>
+                                    <p className="mt-4 max-h-32 overflow-y-auto whitespace-pre-wrap pr-2 text-xs leading-5 text-neutral-500">{result.imagePrompt}</p>
+                                </details>
+
+                                <div className="mt-auto flex flex-col gap-3 pt-8">
+                                    {result.product.mock ? (
+                                        <span className="rounded-xl border border-white/[0.06] bg-white/[0.05] px-5 py-3.5 text-center text-sm font-medium text-neutral-600">Checkout unavailable in demo</span>
+                                    ) : (
+                                        <a href={result.product.checkoutUrl} target="_blank" rel="noopener noreferrer" className="rounded-xl bg-white px-5 py-3.5 text-center text-sm font-medium text-neutral-950 shadow-[0_0_30px_rgba(192,132,252,0.16)] transition-all duration-300 hover:scale-[1.01] hover:shadow-[0_0_36px_rgba(192,132,252,0.3)]">
+                                            Make it yours ↗
+                                        </a>
+                                    )}
+                                    <button type="button" onClick={startOver} className="rounded-xl px-5 py-3 text-xs font-medium uppercase tracking-[0.16em] text-neutral-500 transition-colors hover:text-white">
+                                        Create another memory
+                                    </button>
+                                </div>
+                            </div>
+                        </section>
+                    )}
+                </div>
+
+                <footer className="flex items-center justify-between border-t border-white/[0.06] py-5 text-[10px] uppercase tracking-[0.16em] text-neutral-700">
+                    <span>Memory → Matter</span>
+                    <span className="hidden sm:inline">Generative artifact system · 2026</span>
+                </footer>
+            </div>
+        </main>
+    );
 }
