@@ -2,6 +2,8 @@
 
 import { useEffect, useRef, useState, type FormEvent } from "react";
 
+import { AmbientBackground } from "./ambient-background";
+
 type Stage = "pattern" | "product" | "preview" | "checkout";
 
 type Product = {
@@ -38,100 +40,6 @@ const MIN_LENGTH = 10;
 
 function phaseForStage(stage: Stage): number {
     return stage === "pattern" ? 1 : 2;
-}
-
-/** A procedural fiber-optic field that stays behind the interface. */
-function FiberField() {
-    const canvasRef = useRef<HTMLCanvasElement>(null);
-
-    useEffect(() => {
-        const canvas = canvasRef.current;
-        if (!canvas) return;
-
-        const context = canvas.getContext("2d");
-        if (!context) return;
-
-        const reduceMotion = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
-        let width = 0;
-        let height = 0;
-        let frame = 0;
-        let animationFrame = 0;
-
-        const resize = () => {
-            const pixelRatio = Math.min(window.devicePixelRatio || 1, 2);
-            width = window.innerWidth;
-            height = window.innerHeight;
-            canvas.width = width * pixelRatio;
-            canvas.height = height * pixelRatio;
-            canvas.style.width = `${width}px`;
-            canvas.style.height = `${height}px`;
-            context.setTransform(pixelRatio, 0, 0, pixelRatio, 0, 0);
-        };
-
-        const draw = () => {
-            context.clearRect(0, 0, width, height);
-            context.globalCompositeOperation = "lighter";
-
-            const time = reduceMotion ? 40 : frame * 0.012;
-            const fiberCount = width < 640 ? 10 : 18;
-
-            for (let fiber = 0; fiber < fiberCount; fiber += 1) {
-                const ratio = fiber / Math.max(fiberCount - 1, 1);
-                const silkColors = ["#c8a876", "#b85d38", "#361729"] as const;
-                const color = silkColors[fiber % silkColors.length];
-                const alpha = 0.1 + (fiber % 4) * 0.025;
-
-                context.beginPath();
-                context.lineWidth = fiber % 5 === 0 ? 1.15 : 0.55;
-                context.globalAlpha = alpha;
-                context.strokeStyle = color;
-                context.shadowColor = color;
-                context.shadowBlur = fiber % 4 === 0 ? 18 : 8;
-
-                for (let x = -40; x <= width + 40; x += 12) {
-                    const wave = Math.sin(x * 0.0045 + time + fiber * 0.52) * (38 + fiber * 1.8);
-                    const signal = Math.sin(x * 0.011 - time * 1.35 + fiber) * 18;
-                    const y = height * (0.24 + ratio * 0.55) + wave + signal;
-                    if (x === -40) context.moveTo(x, y);
-                    else context.lineTo(x, y);
-                }
-
-                context.stroke();
-            }
-
-            // Champagne points drift between the ribbons like loose flecks of spun fiber.
-            context.globalAlpha = 1;
-            context.fillStyle = "#f5d0a9";
-            context.shadowColor = "#f5d0a9";
-            context.shadowBlur = 12;
-            const nodeCount = width < 640 ? 8 : 14;
-            for (let node = 0; node < nodeCount; node += 1) {
-                const x = ((node * 193 + time * (8 + (node % 3) * 2)) % (width + 80)) - 40;
-                const y = height * (0.2 + ((node * 37) % 61) / 100) + Math.sin(time * 0.7 + node) * 24;
-                context.globalAlpha = 0.2 + (node % 4) * 0.08;
-                context.beginPath();
-                context.arc(x, y, node % 5 === 0 ? 1.8 : 1, 0, Math.PI * 2);
-                context.fill();
-            }
-
-            context.shadowBlur = 0;
-            context.globalAlpha = 1;
-            context.globalCompositeOperation = "source-over";
-            frame += 1;
-            if (!reduceMotion) animationFrame = requestAnimationFrame(draw);
-        };
-
-        resize();
-        draw();
-        window.addEventListener("resize", resize);
-
-        return () => {
-            window.removeEventListener("resize", resize);
-            cancelAnimationFrame(animationFrame);
-        };
-    }, []);
-
-    return <canvas ref={canvasRef} className="fiber-canvas" aria-hidden="true" />;
 }
 
 function Mark() {
@@ -285,13 +193,8 @@ export default function Home() {
     }
 
     return (
-        <main className="relative min-h-svh overflow-hidden bg-[#09080b] text-white selection:bg-amber-300/30">
-            <div className="aurora" aria-hidden="true">
-                <div className="aurora-blob aurora-blob-violet" />
-                <div className="aurora-blob aurora-blob-copper" />
-            </div>
-            <FiberField />
-            <div className="noise-grid" aria-hidden="true" />
+        <main className="relative isolate min-h-svh overflow-hidden bg-[#09080b] text-white selection:bg-amber-300/30">
+            <AmbientBackground />
 
             <div className="relative z-10 mx-auto flex min-h-svh w-full max-w-7xl flex-col px-5 sm:px-8 lg:px-12">
                 <nav className="flex items-center justify-between py-6 sm:py-8">

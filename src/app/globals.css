@@ -65,106 +65,28 @@ summary:focus-visible {
     outline: 1px solid rgba(245, 208, 169, 0.85);
 }
 
-.aurora {
-    position: fixed;
-    inset: 0;
-    z-index: 0;
-    overflow: hidden;
+.ambient-spotlight {
+    --spotlight-x: 50vw;
+    --spotlight-y: 45vh;
+    background: radial-gradient(800px circle at var(--spotlight-x) var(--spotlight-y), rgba(217, 119, 6, 0.08), transparent 60%);
+    will-change: background, opacity;
+}
+
+.ambient-vignette {
     background:
-        radial-gradient(circle at 50% -20%, rgba(59, 24, 45, 0.2), transparent 48%),
-        #09080b;
-    pointer-events: none;
-}
-
-.aurora::after {
-    position: absolute;
-    inset: 0;
-    content: "";
-    background: radial-gradient(circle at center, transparent 0%, rgba(9, 8, 11, 0.18) 55%, #09080b 100%);
-}
-
-.aurora-blob {
-    position: absolute;
-    border-radius: 9999px;
-    filter: blur(140px);
-    opacity: 0.35;
-    will-change: transform, opacity;
-}
-
-.aurora-blob-violet {
-    top: -25%;
-    left: -8%;
-    width: 58vw;
-    height: 58vw;
-    min-width: 38rem;
-    min-height: 38rem;
-    background: radial-gradient(circle, #3b182d 0%, rgba(59, 24, 45, 0.28) 52%, transparent 72%);
-    animation: drift-violet 18s ease-in-out infinite alternate;
-}
-
-.aurora-blob-copper {
-    right: -18%;
-    bottom: -36%;
-    width: 64vw;
-    height: 64vw;
-    min-width: 42rem;
-    min-height: 42rem;
-    background: radial-gradient(circle, #8a4a24 0%, rgba(138, 74, 36, 0.26) 50%, transparent 72%);
-    animation: drift-copper 22s ease-in-out infinite alternate;
-}
-
-.fiber-canvas {
-    position: fixed;
-    inset: 0;
-    z-index: 1;
-    width: 100%;
-    height: 100%;
-    opacity: 0.56;
-    pointer-events: none;
-    -webkit-mask-image: linear-gradient(to bottom, transparent 6%, black 26%, black 82%, transparent 100%);
-    mask-image: linear-gradient(to bottom, transparent 6%, black 26%, black 82%, transparent 100%);
+        radial-gradient(circle at 50% -15%, rgba(59, 24, 45, 0.12), transparent 50%),
+        radial-gradient(circle at center, transparent 20%, rgba(9, 8, 11, 0.28) 72%, rgba(9, 8, 11, 0.72) 100%);
 }
 
 .noise-grid {
-    position: fixed;
-    inset: 0;
-    z-index: 2;
     pointer-events: none;
-    opacity: 0.22;
+    opacity: 0.16;
     background-image:
         linear-gradient(rgba(255, 255, 255, 0.024) 1px, transparent 1px),
         linear-gradient(90deg, rgba(255, 255, 255, 0.024) 1px, transparent 1px);
     background-size: 72px 72px;
     -webkit-mask-image: radial-gradient(circle at center, black, transparent 80%);
     mask-image: radial-gradient(circle at center, black, transparent 80%);
-}
-
-@keyframes drift-violet {
-    0% {
-        transform: translate3d(-5%, -4%, 0) scale(0.9);
-    }
-
-    50% {
-        transform: translate3d(18%, 10%, 0) scale(1.12);
-    }
-
-    100% {
-        transform: translate3d(33%, -2%, 0) scale(0.98);
-    }
-}
-
-@keyframes drift-copper {
-    0% {
-        transform: translate3d(8%, 8%, 0) scale(0.92);
-    }
-
-    48% {
-        transform: translate3d(-18%, -15%, 0) scale(1.13);
-    }
-
-    100% {
-        transform: translate3d(-30%, -3%, 0) scale(1.02);
-    }
 }
 
 @media (max-width: 640px) {
@@ -184,7 +106,7 @@ summary:focus-visible {
         transition-duration: 0.01ms !important;
     }
 
-    .aurora-blob {
-        animation: none;
+    .ambient-spotlight {
+        background: radial-gradient(560px circle at var(--spotlight-x) var(--spotlight-y), rgba(217, 119, 6, 0.065), transparent 60%);
     }
 }
