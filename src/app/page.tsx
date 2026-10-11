@@ -136,12 +136,12 @@ function FiberField() {
 
 function Mark() {
     return (
-        <div className="flex items-center gap-3" aria-label="Memento">
+        <div className="flex items-center gap-3" aria-label="Momento">
             <span className="relative grid size-9 place-items-center rounded-xl border border-white/10 bg-white/[0.06] shadow-[inset_0_1px_0_rgba(255,255,255,0.12)]">
                 <span className="absolute size-3.5 animate-ping rounded-full bg-amber-300/15" />
                 <span className="size-2 rounded-full bg-gradient-to-br from-amber-200 to-orange-400 shadow-[0_0_16px_rgba(245,208,169,0.65)]" />
             </span>
-            <span className="text-sm font-medium tracking-[0.18em] text-white">MEMENTO</span>
+            <span className="text-sm font-medium tracking-[0.18em] text-white">MOMENTO</span>
         </div>
     );
 }
@@ -402,7 +402,9 @@ export default function Home() {
                             </div>
                             <p className="text-[10px] font-medium uppercase tracking-[0.25em] text-amber-200">Atelier loom active</p>
                             <h2 key={phase} className="animate-in fade-in zoom-in-95 mt-5 text-3xl font-medium tracking-tight text-white duration-700 sm:text-4xl">
-                                {PHASES[phase]}
+                                {phase === PHASES.length - 1
+                                    ? "03 / 03 — Interlocking physical weave & minting checkout via Arcade API..."
+                                    : PHASES[phase]}
                             </h2>
                             <p className="mt-4 max-w-md text-sm leading-6 text-neutral-500">
                                 Your memory is being translated into color, form, and material. This usually takes about ninety seconds.
@@ -470,7 +472,14 @@ export default function Home() {
 
                 <footer className="flex items-center justify-between border-t border-white/[0.06] py-5 text-[10px] uppercase tracking-[0.16em] text-neutral-700">
                     <span>Sentiment → Matter</span>
-                    <span className="hidden sm:inline">Generative artifact system · 2026</span>
+                    <a
+                        href="https://platform.arcade.ai"
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="text-[10px] uppercase tracking-[0.2em] text-stone-500 transition-colors hover:text-stone-300"
+                    >
+                        Powered by Arcade
+                    </a>
                 </footer>
             </div>
         </main>
