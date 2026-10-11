@@ -1,7 +1,7 @@
 @import "tailwindcss";
 
 :root {
-    --background: #050505;
+    --background: #09080b;
     --foreground: #f5f5f5;
 }
 
@@ -62,7 +62,7 @@ summary {
 button:focus-visible,
 a:focus-visible,
 summary:focus-visible {
-    outline: 1px solid rgba(216, 180, 254, 0.85);
+    outline: 1px solid rgba(245, 208, 169, 0.85);
 }
 
 .aurora {
@@ -71,8 +71,8 @@ summary:focus-visible {
     z-index: 0;
     overflow: hidden;
     background:
-        radial-gradient(circle at 50% -20%, rgba(89, 42, 133, 0.18), transparent 48%),
-        #050505;
+        radial-gradient(circle at 50% -20%, rgba(59, 24, 45, 0.2), transparent 48%),
+        #09080b;
     pointer-events: none;
 }
 
@@ -80,14 +80,14 @@ summary:focus-visible {
     position: absolute;
     inset: 0;
     content: "";
-    background: radial-gradient(circle at center, transparent 0%, rgba(0, 0, 0, 0.18) 55%, #030303 100%);
+    background: radial-gradient(circle at center, transparent 0%, rgba(9, 8, 11, 0.18) 55%, #09080b 100%);
 }
 
 .aurora-blob {
     position: absolute;
     border-radius: 9999px;
-    filter: blur(110px);
-    opacity: 0.55;
+    filter: blur(140px);
+    opacity: 0.35;
     will-change: transform, opacity;
 }
 
@@ -98,7 +98,7 @@ summary:focus-visible {
     height: 58vw;
     min-width: 38rem;
     min-height: 38rem;
-    background: radial-gradient(circle, rgba(92, 36, 164, 0.56) 0%, rgba(45, 12, 74, 0.18) 52%, transparent 72%);
+    background: radial-gradient(circle, #3b182d 0%, rgba(59, 24, 45, 0.28) 52%, transparent 72%);
     animation: drift-violet 18s ease-in-out infinite alternate;
 }
 
@@ -109,19 +109,8 @@ summary:focus-visible {
     height: 64vw;
     min-width: 42rem;
     min-height: 42rem;
-    background: radial-gradient(circle, rgba(184, 72, 34, 0.5) 0%, rgba(107, 36, 18, 0.18) 50%, transparent 72%);
+    background: radial-gradient(circle, #8a4a24 0%, rgba(138, 74, 36, 0.26) 50%, transparent 72%);
     animation: drift-copper 22s ease-in-out infinite alternate;
-}
-
-.aurora-blob-orchid {
-    top: 36%;
-    left: 42%;
-    width: 38vw;
-    height: 38vw;
-    min-width: 26rem;
-    min-height: 26rem;
-    background: radial-gradient(circle, rgba(130, 54, 187, 0.24) 0%, rgba(111, 44, 137, 0.08) 52%, transparent 74%);
-    animation: breathe-orchid 14s ease-in-out infinite;
 }
 
 .fiber-canvas {
@@ -153,56 +142,32 @@ summary:focus-visible {
 @keyframes drift-violet {
     0% {
         transform: translate3d(-5%, -4%, 0) scale(0.9);
-        opacity: 0.42;
     }
 
     50% {
         transform: translate3d(18%, 10%, 0) scale(1.12);
-        opacity: 0.63;
     }
 
     100% {
         transform: translate3d(33%, -2%, 0) scale(0.98);
-        opacity: 0.5;
     }
 }
 
 @keyframes drift-copper {
     0% {
         transform: translate3d(8%, 8%, 0) scale(0.92);
-        opacity: 0.38;
     }
 
     48% {
         transform: translate3d(-18%, -15%, 0) scale(1.13);
-        opacity: 0.58;
     }
 
     100% {
         transform: translate3d(-30%, -3%, 0) scale(1.02);
-        opacity: 0.46;
-    }
-}
-
-@keyframes breathe-orchid {
-
-    0%,
-    100% {
-        transform: translate3d(-12%, 6%, 0) scale(0.78);
-        opacity: 0.22;
-    }
-
-    50% {
-        transform: translate3d(15%, -12%, 0) scale(1.28);
-        opacity: 0.5;
     }
 }
 
 @media (max-width: 640px) {
-    .aurora-blob {
-        filter: blur(85px);
-    }
-
     .noise-grid {
         background-size: 48px 48px;
     }

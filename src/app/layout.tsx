@@ -25,6 +25,32 @@ export default function RootLayout({ children }: { children: ReactNode }) {
       lang="en"
       className={`${geistSans.variable} ${geistMono.variable} h-full antialiased`}
     >
+      <head>
+        <script
+          dangerouslySetInnerHTML={{
+            __html: `
+              (() => {
+                const recoveryKey = "memento:chunk-recovery";
+                window.addEventListener("error", (event) => {
+                  const target = event.target;
+                  const url = target && (target.src || target.href);
+                  if (!url || !url.includes("/_next/static/")) return;
+
+                  if (sessionStorage.getItem(recoveryKey)) {
+                    console.error("[memento:recovery] Next.js asset failed after retry", url);
+                    return;
+                  }
+
+                  sessionStorage.setItem(recoveryKey, "pending");
+                  const nextUrl = new URL(window.location.href);
+                  nextUrl.searchParams.set("_asset_retry", Date.now().toString());
+                  window.location.replace(nextUrl);
+                }, true);
+              })();
+            `,
+          }}
+        />
+      </head>
       <body className="min-h-full flex flex-col">{children}</body>
     </html>
   );

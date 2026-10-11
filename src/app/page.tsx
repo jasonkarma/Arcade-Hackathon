@@ -77,16 +77,15 @@ function FiberField() {
 
             for (let fiber = 0; fiber < fiberCount; fiber += 1) {
                 const ratio = fiber / Math.max(fiberCount - 1, 1);
-                const copper = fiber % 3 === 0;
+                const silkColors = ["#c8a876", "#b85d38", "#361729"] as const;
+                const color = silkColors[fiber % silkColors.length];
                 const alpha = 0.1 + (fiber % 4) * 0.025;
-                const color = copper
-                    ? `rgba(255, 128, 68, ${alpha})`
-                    : `rgba(171, 105, 255, ${alpha})`;
 
                 context.beginPath();
                 context.lineWidth = fiber % 5 === 0 ? 1.15 : 0.55;
+                context.globalAlpha = alpha;
                 context.strokeStyle = color;
-                context.shadowColor = copper ? "rgba(255, 105, 45, .7)" : "rgba(149, 76, 255, .75)";
+                context.shadowColor = color;
                 context.shadowBlur = fiber % 4 === 0 ? 18 : 8;
 
                 for (let x = -40; x <= width + 40; x += 12) {
@@ -100,7 +99,23 @@ function FiberField() {
                 context.stroke();
             }
 
+            // Champagne points drift between the ribbons like loose flecks of spun fiber.
+            context.globalAlpha = 1;
+            context.fillStyle = "#f5d0a9";
+            context.shadowColor = "#f5d0a9";
+            context.shadowBlur = 12;
+            const nodeCount = width < 640 ? 8 : 14;
+            for (let node = 0; node < nodeCount; node += 1) {
+                const x = ((node * 193 + time * (8 + (node % 3) * 2)) % (width + 80)) - 40;
+                const y = height * (0.2 + ((node * 37) % 61) / 100) + Math.sin(time * 0.7 + node) * 24;
+                context.globalAlpha = 0.2 + (node % 4) * 0.08;
+                context.beginPath();
+                context.arc(x, y, node % 5 === 0 ? 1.8 : 1, 0, Math.PI * 2);
+                context.fill();
+            }
+
             context.shadowBlur = 0;
+            context.globalAlpha = 1;
             context.globalCompositeOperation = "source-over";
             frame += 1;
             if (!reduceMotion) animationFrame = requestAnimationFrame(draw);
@@ -123,8 +138,8 @@ function Mark() {
     return (
         <div className="flex items-center gap-3" aria-label="Memento">
             <span className="relative grid size-9 place-items-center rounded-xl border border-white/10 bg-white/[0.06] shadow-[inset_0_1px_0_rgba(255,255,255,0.12)]">
-                <span className="absolute size-3.5 animate-ping rounded-full bg-purple-400/20" />
-                <span className="size-2 rounded-full bg-gradient-to-br from-purple-300 to-orange-400 shadow-[0_0_16px_rgba(192,119,255,0.9)]" />
+                <span className="absolute size-3.5 animate-ping rounded-full bg-amber-300/15" />
+                <span className="size-2 rounded-full bg-gradient-to-br from-amber-200 to-orange-400 shadow-[0_0_16px_rgba(245,208,169,0.65)]" />
             </span>
             <span className="text-sm font-medium tracking-[0.18em] text-white">MEMENTO</span>
         </div>
@@ -144,8 +159,34 @@ export default function Home() {
     const fadeTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
     useEffect(() => {
-        console.info("[memento] React hydration active");
+        sessionStorage.removeItem("memento:chunk-recovery");
+        console.info("[memento:diagnostic] React hydration active", {
+            origin: window.location.origin,
+            readyState: document.readyState,
+        });
+
+        const reportResourceFailure = (event: ErrorEvent) => {
+            const target = event.target;
+            if (target instanceof HTMLScriptElement || target instanceof HTMLLinkElement) {
+                console.error("[memento:diagnostic] resource failed after hydration", {
+                    url: target instanceof HTMLScriptElement ? target.src : target.href,
+                    tagName: target.tagName,
+                });
+            }
+        };
+
+        window.addEventListener("error", reportResourceFailure, true);
+        return () => window.removeEventListener("error", reportResourceFailure, true);
     }, []);
+
+    useEffect(() => {
+        console.info("[memento:diagnostic] sentiment gate", {
+            length: memory.trim().length,
+            requiredLength: MIN_LENGTH,
+            busy,
+            unlocked: !busy && memory.trim().length >= MIN_LENGTH,
+        });
+    }, [busy, memory]);
 
     useEffect(
         () => () => {
@@ -173,7 +214,7 @@ export default function Home() {
         // Read from the form so browser autofill and automation-inserted text are
         // captured even when they do not dispatch React's change event.
         const formData = new FormData(event.currentTarget as HTMLFormElement);
-        const trimmed = String(formData.get("memory") ?? memory).trim();
+        const trimmed = String(formData.get("sentiment_input") ?? memory).trim();
         if (trimmed.length < MIN_LENGTH) {
             setError(`Please describe the memory in at least ${MIN_LENGTH} characters.`);
             return;
@@ -244,11 +285,10 @@ export default function Home() {
     }
 
     return (
-        <main className="relative min-h-svh overflow-hidden bg-neutral-950 text-white selection:bg-purple-400/30">
+        <main className="relative min-h-svh overflow-hidden bg-[#09080b] text-white selection:bg-amber-300/30">
             <div className="aurora" aria-hidden="true">
                 <div className="aurora-blob aurora-blob-violet" />
                 <div className="aurora-blob aurora-blob-copper" />
-                <div className="aurora-blob aurora-blob-orchid" />
             </div>
             <FiberField />
             <div className="noise-grid" aria-hidden="true" />
@@ -257,8 +297,8 @@ export default function Home() {
                 <nav className="flex items-center justify-between py-6 sm:py-8">
                     <Mark />
                     <div className="hidden items-center gap-2 text-[11px] font-medium uppercase tracking-[0.18em] text-neutral-500 sm:flex">
-                        <span className="size-1.5 rounded-full bg-emerald-400 shadow-[0_0_10px_rgba(52,211,153,0.9)]" />
-                        Creative engine online
+                        <span className="size-1.5 animate-pulse rounded-full bg-amber-400/80 shadow-[0_0_8px_rgba(251,191,36,0.6)]" />
+                        Ready to craft
                     </div>
                 </nav>
 
@@ -270,21 +310,19 @@ export default function Home() {
                         <section className="animate-in fade-in zoom-in-95 grid w-full gap-12 duration-700 lg:grid-cols-[1.05fr_0.95fr] lg:items-center lg:gap-20">
                             <header>
                                 <div className="mb-7 inline-flex items-center gap-2 rounded-full border border-white/10 bg-white/[0.04] px-3 py-1.5 text-[10px] font-medium uppercase tracking-[0.2em] text-neutral-400 backdrop-blur-xl">
-                                    <span className="text-purple-300">✦</span> AI-powered memory synthesis
+                                    <span className="text-amber-200">✦</span> Bespoke textile atelier
                                 </div>
                                 <h1 className="max-w-3xl font-sans text-5xl font-medium leading-[0.96] tracking-[-0.055em] text-white sm:text-6xl lg:text-7xl xl:text-[5.4rem]">
-                                    Turn a memory into{" "}
-                                    <span className="bg-gradient-to-r from-purple-400 via-fuchsia-300 to-orange-400 bg-clip-text text-transparent">
-                                        something real.
-                                    </span>
+                                    <span>Give your words </span>
+                                    <span className="bg-clip-text text-transparent bg-gradient-to-r from-amber-200 via-orange-300 to-amber-400">a physical form.</span>
                                 </h1>
                                 <p className="mt-7 max-w-xl text-base leading-7 text-neutral-400 sm:text-lg">
-                                    Describe a moment worth keeping. Our creative intelligence transforms it into
-                                    one-of-one artwork, then maps it onto a physical object you can hold.
+                                    A cherished memory, a favorite quote, or an inside joke. Our sentiment engine crafts
+                                    bespoke woven heirlooms from whatever matters to you.
                                 </p>
                                 <div className="mt-9 flex items-center gap-6 text-xs text-neutral-500">
                                     <span className="flex items-center gap-2">
-                                        <span className="h-px w-6 bg-gradient-to-r from-purple-400 to-transparent" />
+                                        <span className="h-px w-6 bg-gradient-to-r from-amber-300 to-transparent" />
                                         Unique to you
                                     </span>
                                     <span className="flex items-center gap-2">
@@ -297,39 +335,45 @@ export default function Home() {
                             <div>
                                 <form
                                     onSubmit={submit}
-                                    className="group rounded-2xl border border-white/10 bg-white/[0.05] p-2 shadow-[0_32px_100px_rgba(0,0,0,0.5)] backdrop-blur-2xl transition-all duration-500 focus-within:border-white/30 focus-within:shadow-[0_0_30px_rgba(184,92,56,0.2),0_32px_100px_rgba(0,0,0,0.45)]"
+                                    className="group rounded-2xl border border-white/10 bg-stone-900/40 p-2 shadow-[0_8px_32px_0_rgba(0,0,0,0.36)] backdrop-blur-xl transition-all duration-500 focus-within:border-amber-100/20 focus-within:shadow-[0_0_30px_rgba(184,92,56,0.16),0_8px_32px_rgba(0,0,0,0.36)]"
                                 >
                                     <div className="rounded-xl border border-white/[0.06] bg-black/20 p-5 sm:p-6">
-                                        <label htmlFor="memory" className="flex items-center justify-between text-[10px] font-medium uppercase tracking-[0.2em] text-neutral-500">
-                                            <span>Memory input</span>
-                                            <span className="flex items-center gap-1.5 text-purple-300/70">
-                                                <span className="size-1 rounded-full bg-purple-400 shadow-[0_0_8px_rgba(192,132,252,0.9)]" />
+                                        <label htmlFor="sentiment_input" className="flex items-center justify-between text-[10px] font-medium uppercase tracking-[0.2em] text-neutral-500">
+                                            <span>Your sentiment</span>
+                                            <span className="flex items-center gap-1.5 text-amber-200/70">
+                                                <span className="size-1 rounded-full bg-amber-300 shadow-[0_0_8px_rgba(245,208,169,0.7)]" />
                                                 Listening
                                             </span>
                                         </label>
                                         <textarea
-                                            id="memory"
-                                            name="memory"
+                                            id="sentiment_input"
+                                            name="sentiment_input"
+                                            autoComplete="off"
+                                            autoCorrect="off"
+                                            spellCheck="false"
                                             value={memory}
                                             onChange={(event) => {
                                                 console.info("[memento] React input event", { length: event.target.value.length });
                                                 setMemory(event.target.value);
                                             }}
                                             rows={7}
+                                            minLength={MIN_LENGTH}
+                                            required
                                             maxLength={1000}
-                                            placeholder="A late summer evening, the smell of rain, my grandmother laughing in the kitchen…"
-                                            disabled={busy}
-                                            className="mt-5 w-full resize-none border-0 bg-transparent p-0 text-base leading-7 text-neutral-200 outline-none placeholder:text-neutral-600 focus:ring-0 disabled:opacity-50 sm:text-lg"
+                                            placeholder="A favorite quote, a childhood memory, wedding vows, or an unforgettable night..."
+                                            readOnly={busy}
+                                            aria-disabled={busy}
+                                            className="mt-5 w-full resize-none border-0 bg-transparent p-0 text-base leading-7 text-neutral-200 outline-none placeholder:text-neutral-600 focus:ring-0 read-only:cursor-wait read-only:opacity-50 sm:text-lg"
                                         />
                                         <div className="mt-5 h-px bg-gradient-to-r from-transparent via-white/10 to-transparent" />
                                         <div className="mt-5 flex items-center justify-end gap-4">
                                             <button
                                                 type="submit"
-                                                disabled={busy}
-                                                className="relative overflow-hidden rounded-xl border border-white/10 bg-white px-5 py-3 text-sm font-medium text-neutral-950 shadow-[0_0_24px_rgba(255,255,255,0.12)] transition-all duration-300 before:absolute before:inset-0 before:bg-gradient-to-r before:from-purple-300/0 before:via-purple-300/30 before:to-orange-300/20 before:opacity-0 before:transition-opacity hover:scale-[1.02] hover:shadow-[0_0_32px_rgba(192,132,252,0.28)] hover:before:opacity-100 disabled:cursor-not-allowed disabled:bg-white/10 disabled:text-neutral-600 disabled:shadow-none disabled:hover:scale-100"
+                                                disabled={busy || memory.trim().length < MIN_LENGTH}
+                                                className="relative overflow-hidden rounded-xl border border-white/10 bg-gradient-to-r from-amber-100 to-amber-200 px-5 py-3 text-sm font-medium text-stone-950 shadow-[0_0_20px_rgba(245,208,169,0.25)] transition-all duration-300 hover:scale-[1.02] hover:from-white hover:to-amber-100 disabled:cursor-not-allowed disabled:from-white/10 disabled:to-white/10 disabled:text-neutral-600 disabled:shadow-none disabled:hover:scale-100"
                                             >
                                                 <span className="relative flex items-center gap-2">
-                                                    Synthesize <span aria-hidden="true">↗</span>
+                                                    Craft Keepsake <span aria-hidden="true">↗</span>
                                                 </span>
                                             </button>
                                         </div>
@@ -348,15 +392,15 @@ export default function Home() {
                     {view === "loading" && (
                         <section aria-live="polite" className="animate-in fade-in zoom-in-95 mx-auto flex w-full max-w-2xl flex-col items-center text-center duration-700">
                             <div className="relative mb-12 grid size-36 place-items-center">
-                                <div className="absolute inset-0 animate-spin rounded-full bg-[conic-gradient(from_0deg,transparent_0_20%,rgba(192,132,252,.8)_45%,transparent_70%)] p-px [animation-duration:3s]">
-                                    <div className="size-full rounded-full bg-neutral-950/90" />
+                                <div className="absolute inset-0 animate-spin rounded-full bg-[conic-gradient(from_0deg,transparent_0_20%,rgba(200,168,118,.8)_45%,transparent_70%)] p-px [animation-duration:3s]">
+                                    <div className="size-full rounded-full bg-[#09080b]/90" />
                                 </div>
-                                <div className="absolute inset-4 animate-pulse rounded-full border border-orange-400/20 shadow-[0_0_40px_rgba(192,132,252,0.18),inset_0_0_30px_rgba(251,146,60,0.08)]" />
+                                <div className="absolute inset-4 animate-pulse rounded-full border border-amber-300/20 shadow-[0_0_40px_rgba(200,168,118,0.18),inset_0_0_30px_rgba(184,93,56,0.08)]" />
                                 <span className="text-sm font-medium tabular-nums tracking-[0.18em] text-white">
                                     0{phase + 1}<span className="text-neutral-600"> / 0{PHASES.length}</span>
                                 </span>
                             </div>
-                            <p className="text-[10px] font-medium uppercase tracking-[0.25em] text-purple-300">Neural loom active</p>
+                            <p className="text-[10px] font-medium uppercase tracking-[0.25em] text-amber-200">Atelier loom active</p>
                             <h2 key={phase} className="animate-in fade-in zoom-in-95 mt-5 text-3xl font-medium tracking-tight text-white duration-700 sm:text-4xl">
                                 {PHASES[phase]}
                             </h2>
@@ -375,15 +419,15 @@ export default function Home() {
                                 ) : (
                                     <div className="grid h-full place-items-center text-sm text-neutral-600">Preview unavailable</div>
                                 )}
-                                <div className="pointer-events-none absolute inset-0 bg-gradient-to-t from-black/35 via-transparent to-purple-500/10" />
+                                <div className="pointer-events-none absolute inset-0 bg-gradient-to-t from-black/35 via-transparent to-amber-200/10" />
                                 <div className="absolute left-5 top-5 rounded-full border border-white/10 bg-black/40 px-3 py-1.5 text-[10px] font-medium uppercase tracking-[0.18em] text-white/70 backdrop-blur-xl">
                                     Synthesis complete
                                 </div>
                             </div>
 
                             <div className="flex flex-col p-7 sm:p-9">
-                                <div className="mb-8 flex items-center gap-2 text-[10px] font-medium uppercase tracking-[0.2em] text-emerald-300/80">
-                                    <span className="size-1.5 rounded-full bg-emerald-400 shadow-[0_0_10px_rgba(52,211,153,0.8)]" />
+                                <div className="mb-8 flex items-center gap-2 text-[10px] font-medium uppercase tracking-[0.2em] text-amber-200/80">
+                                    <span className="size-1.5 rounded-full bg-amber-300 shadow-[0_0_10px_rgba(245,208,169,0.65)]" />
                                     Artifact ready
                                 </div>
                                 <h2 className="text-3xl font-medium tracking-tight text-white sm:text-4xl">
@@ -411,7 +455,7 @@ export default function Home() {
                                     {result.product.mock ? (
                                         <span className="rounded-xl border border-white/[0.06] bg-white/[0.05] px-5 py-3.5 text-center text-sm font-medium text-neutral-600">Checkout unavailable in demo</span>
                                     ) : (
-                                        <a href={result.product.checkoutUrl} target="_blank" rel="noopener noreferrer" className="rounded-xl bg-white px-5 py-3.5 text-center text-sm font-medium text-neutral-950 shadow-[0_0_30px_rgba(192,132,252,0.16)] transition-all duration-300 hover:scale-[1.01] hover:shadow-[0_0_36px_rgba(192,132,252,0.3)]">
+                                        <a href={result.product.checkoutUrl} target="_blank" rel="noopener noreferrer" className="rounded-xl bg-gradient-to-r from-amber-100 to-amber-200 px-5 py-3.5 text-center text-sm font-medium text-stone-950 shadow-[0_0_20px_rgba(245,208,169,0.25)] transition-all duration-300 hover:scale-[1.01] hover:from-white hover:to-amber-100 hover:shadow-[0_0_30px_rgba(245,208,169,0.3)]">
                                             Make it yours ↗
                                         </a>
                                     )}
@@ -425,7 +469,7 @@ export default function Home() {
                 </div>
 
                 <footer className="flex items-center justify-between border-t border-white/[0.06] py-5 text-[10px] uppercase tracking-[0.16em] text-neutral-700">
-                    <span>Memory → Matter</span>
+                    <span>Sentiment → Matter</span>
                     <span className="hidden sm:inline">Generative artifact system · 2026</span>
                 </footer>
             </div>
