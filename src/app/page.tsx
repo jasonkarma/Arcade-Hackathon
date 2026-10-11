@@ -32,9 +32,6 @@ const STAGES: { key: Stage; label: string }[] = [
   { key: "checkout", label: "Checkout" },
 ];
 
-const EXAMPLE =
-  "Every summer my grandmother and I picked blackberries behind the old barn, and she'd make jam in a copper pot while the radio played.";
-
 export default function Home() {
   const [memory, setMemory] = useState("");
   const [status, setStatus] = useState("");
@@ -146,20 +143,20 @@ export default function Home() {
           onChange={(event) => setMemory(event.target.value)}
           rows={5}
           maxLength={1000}
-          placeholder={EXAMPLE}
+          placeholder="Enter a memory, a favorite quote, or a special event..."
           disabled={busy}
-          className="mt-3 w-full resize-y rounded-xl border border-stone-200 bg-stone-50 px-4 py-3 text-stone-900 outline-none transition focus:border-stone-400 focus:bg-white disabled:opacity-60"
+          className="mt-3 w-full resize-y rounded-xl border border-stone-200 bg-stone-50 px-4 py-3 text-stone-900 transition focus:bg-white focus:ring-2 focus:ring-black focus:outline-none disabled:opacity-60"
         />
 
         <div className="mt-3 flex items-center justify-between gap-4">
           <span className="text-xs text-stone-400">
-            {memory.trim().length}/1000
+            {memory.length}/1000
             {tooShort && " · needs at least 10"}
           </span>
           <button
             type="submit"
-            disabled={busy || memory.trim().length < 10}
-            className="rounded-xl bg-stone-900 px-5 py-2.5 text-sm font-medium text-white transition hover:bg-stone-700 disabled:cursor-not-allowed disabled:opacity-40"
+            disabled={busy || memory.trim().length < 5}
+            className="rounded-xl bg-black px-5 py-2.5 text-sm font-medium text-white transition hover:bg-gray-800 disabled:cursor-not-allowed disabled:bg-gray-300 disabled:text-gray-500"
           >
             {busy ? "Working…" : "Create my keepsake"}
           </button>
